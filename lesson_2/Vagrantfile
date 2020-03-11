@@ -43,6 +43,7 @@ Vagrant.configure("2") do |config|
       cp -r /home/vagrant/.ssh /home/otus/.ssh
       chown otus:otus -R /home/otus/.ssh
       SHELL
+    subconfig.vm.provision "shell", inline: "yum -y update && yum -y install udisks2"
     subconfig.vm.provision "file", source: "files", destination: "/tmp/files"
     subconfig.vm.provision "shell", inline: $move_files
     subconfig.vm.provision "shell", inline: $otus_chroot

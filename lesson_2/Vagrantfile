@@ -1,22 +1,6 @@
 Vagrant.configure("2") do |config|
 
-  $polkit = <<-'SCRIPT'
-  echo "
-  polkit.addRule(function(action, subject) {
-    if (action.id.match("org.freedesktop.udisks2.filesystem-mount-system") && subject.isInGroup("otus")) {
-      return polkit.Result.YES;
-   }
-  });
-  " >> /etc/polkit-1/rules.d/30-udisk2.rules
-  SCRIPT
-
-  $pam = <<-'SCRIPT'
-  echo "account required pam_access.so" >> /etc/pam.d/sshd
-  echo "- : otus : ALL" >> /etc/security/access.conf
-  service sshd restart
-  SCRIPT
-
-  $chroot = <<-'SCRIPT'
+  $otus_chroot = <<-SCRIPT
   mkdir -p /otusjail/dev/
   chown root:root /otusjail
   chmod 0755 /otusjail
@@ -30,11 +14,13 @@ Vagrant.configure("2") do |config|
   cp -v /lib64/{libtinfo.so.5,libdl.so.2,libc.so.6,ld-linux-x86-64.so.2} /otusjail/lib64/
   mkdir /otusjail/etc
   cp -vf /etc/{passwd,group} /otusjail/etc/
-  echo "
-  Match User otus3
-  ChrootDirectory /otusjail
-  " >> /etc/ssh/sshd_config
-  service sshd restart
+  SCRIPT
+
+  $move_files = <<-SCRIPT
+  mv /tmp/files/polkit_mount_rule /etc/polkit-1/rules.d/30-udisk2.rules
+  mv /tmp/files/pam_access_config /etc/security/access.conf
+  mv /tmp/files/pam_sshd_config /etc/pam.d/sshd
+  mv /tmp/files/ssh_chroot_config /etc/ssh/sshd_config
   SCRIPT
 
   config.vm.define "centos" do |subconfig|
@@ -57,9 +43,10 @@ Vagrant.configure("2") do |config|
       cp -r /home/vagrant/.ssh /home/otus/.ssh
       chown otus:otus -R /home/otus/.ssh
       SHELL
-    subconfig.vm.provision "shell", inline: $polkit
-    subconfig.vm.provision "shell", inline: $pam
-    subconfig.vm.provision "shell", inline: $chroot
+    subconfig.vm.provision "file", source: "files", destination: "/tmp/files"
+    subconfig.vm.provision "shell", inline: $move_files
+    subconfig.vm.provision "shell", inline: $otus_chroot
+    subconfig.vm.provision "shell", inline: "service sshd restart"
   end
   # config.vm.define "ubuntu" do |subconfig|
   #   subconfig.vm.box = "ubuntu/bionic64"

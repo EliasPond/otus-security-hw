@@ -1,0 +1,3 @@
+.gitignore
+.lesson_*/.vagrant
+.lesson_*/*.vdi
